@@ -90,8 +90,11 @@
             background: var(--glass-bg); backdrop-filter: blur(12px);
             border: 1px solid var(--glass-border); border-radius: var(--border-radius);
             box-shadow: var(--shadow); padding: 15px; position: relative; overflow: hidden;
+            cursor: pointer;
         }
+        .widget:active { transform: scale(0.98); }
         .no-click { cursor: default; }
+        .no-click:active { transform: none; }
         
         .date-text { font-size: 13px; letter-spacing: 1px; color: var(--text-light); margin-bottom: 5px; text-align: center;}
         .time-text { font-size: 4.5rem; font-weight: 300; line-height: 1; letter-spacing: -2px; color: #5a5a5a; text-align: center; }
@@ -117,7 +120,9 @@
             background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 14px; 
             aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
             box-shadow: var(--shadow); overflow: hidden; cursor: pointer;
+            transition: transform 0.1s;
         }
+        .icon-box:active { transform: scale(0.9); }
         .icon-box svg { width: 22px; height: 22px; fill: var(--text-main); opacity: 0.8; }
 
         /* 底部 Dock */
@@ -271,6 +276,28 @@
         .selector-item img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover;}
         .selector-item span { font-size: 14px; color: #333;}
 
+        /* --- 美化面板 --- */
+        .custom-panel {
+            position: fixed; top: 0; right: -100%; width: 100%; max-width: 380px; height: 100%;
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); z-index: 999;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.1); transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            padding: 25px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;
+        }
+        .custom-panel.active { right: 0; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; }
+        .panel-header h2 { font-size: 18px; font-weight: 600; color: #333; }
+        .close-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #eee; border-radius: 50%; font-weight: bold; color: #666;}
+        
+        .setting-group { background: #f8f8f8; padding: 15px; border-radius: 12px; border: 1px solid #eee; }
+        .setting-group h3 { font-size: 13px; color: #666; margin-bottom: 10px; font-weight: 500;}
+        
+        .color-options { display: flex; gap: 10px; flex-wrap: wrap; }
+        .color-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .color-btn.active { border-color: #333; }
+
+        .upload-btn { display: block; width: 100%; padding: 12px; text-align: center; background: #fff; border: 1px dashed #ccc; border-radius: 8px; font-size: 13px; color: #555; cursor: pointer; margin-top: 10px;}
+        .upload-btn:active { background: #f0f0f0; }
+        
         .file-input { display: none; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
@@ -306,16 +333,21 @@
                         ⋆｡°✩ ੈ✩‧₊
                     </div>
                 </div>
-                <div class="widget widget-music no-click">
-                    <img src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=150&q=80" class="music-cover">
+                <!-- 音乐卡片 (点击换图) -->
+                <div class="widget widget-music" onclick="document.getElementById('music-upload').click()">
+                    <img src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=150&q=80" class="music-cover" id="music-cover">
                     <div class="music-info">
                         <h4>Faded Memories</h4>
                         <p>Ambient Mix</p>
                     </div>
                 </div>
-                <div class="widget widget-photo photo-tall no-click">
-                    <img src="https://images.unsplash.com/photo-1584824486509-112e4181ff6b?auto=format&fit=crop&w=500&q=80">
+                <input type="file" id="music-upload" class="file-input" accept="image/*" onchange="changeImage(event, 'music-cover')">
+
+                <!-- 大照片卡片 (点击换图) -->
+                <div class="widget widget-photo photo-tall" onclick="document.getElementById('photo1-upload').click()">
+                    <img src="https://images.unsplash.com/photo-1584824486509-112e4181ff6b?auto=format&fit=crop&w=500&q=80" id="photo-card-1">
                 </div>
+                <input type="file" id="photo1-upload" class="file-input" accept="image/*" onchange="changeImage(event, 'photo-card-1')">
             </div>
 
             <!-- 第二页 -->
@@ -326,9 +358,11 @@
                 </div>
 
                 <div class="grid-2" style="align-items: start;">
-                    <div class="widget widget-photo photo-square no-click">
-                        <img src="https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=300&q=80">
+                    <!-- 头像卡片 (点击换图) -->
+                    <div class="widget widget-photo photo-square" onclick="document.getElementById('avatar-upload').click()">
+                        <img src="https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=300&q=80" id="avatar-card">
                     </div>
+                    <input type="file" id="avatar-upload" class="file-input" accept="image/*" onchange="changeImage(event, 'avatar-card')">
 
                     <!-- App 图标组 -->
                     <div class="widget-icons-grid">
@@ -359,6 +393,7 @@
 
         <!-- 底部 Dock -->
         <div class="dock">
+            <!-- 美化面板开关 (已修复) -->
             <div class="dock-icon" onclick="document.getElementById('custom-panel').classList.add('active')">
                 <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
             </div>
@@ -514,7 +549,6 @@
                 </div>
             </div>
 
-            <!-- 顶部联系人选择器 -->
             <div class="contact-selector" id="contact-selector"></div>
             
             <div class="chat-container" id="chat-container">
@@ -548,54 +582,44 @@
             </div>
         </div>
 
-        <!-- 美化面板 -->
-        <div class="custom-panel" id="custom-panel" style="position: fixed; top: 0; right: -100%; width: 100%; max-width: 380px; height: 100%; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); z-index: 999; box-shadow: -5px 0 30px rgba(0,0,0,0.1); transition: right 0.3s; padding: 25px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="font-size: 18px; font-weight: 600; color: #333;">美化设置</h2>
-                <div style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #eee; border-radius: 50%; font-weight: bold; color: #666;" onclick="document.getElementById('custom-panel').classList.remove('active')">×</div>
+        <!-- ================= 6. 美化面板 (已修复) ================= -->
+        <div class="custom-panel" id="custom-panel">
+            <div class="panel-header">
+                <h2>美化设置</h2>
+                <div class="close-btn" onclick="document.getElementById('custom-panel').classList.remove('active')">×</div>
             </div>
-            <div style="background: #f8f8f8; padding: 15px; border-radius: 12px; border: 1px solid #eee;">
-                <h3 style="font-size: 13px; color: #666; margin-bottom: 10px; font-weight: 500;">界面设置</h3>
-                <p style="font-size:11px; color:#999;">当前版本专注核心 RP 功能。</p>
+            
+            <!-- 背景设置 -->
+            <div class="setting-group">
+                <h3>更换背景颜色</h3>
+                <div class="color-options">
+                    <div class="color-btn active" style="background:#f2f2f3;" onclick="setBgColor('#f2f2f3', '#d6d6d6', this)"></div>
+                    <div class="color-btn" style="background:#e8eaed;" onclick="setBgColor('#e8eaed', '#c2c7cf', this)"></div>
+                    <div class="color-btn" style="background:#fdf5e6;" onclick="setBgColor('#fdf5e6', '#e8d8c3', this)"></div>
+                    <div class="color-btn" style="background:#e0f2f1;" onclick="setBgColor('#e0f2f1', '#b2dfdb', this)"></div>
+                    <div class="color-btn" style="background:#fce4ec;" onclick="setBgColor('#fce4ec', '#f8bbd0', this)"></div>
+                </div>
+                
+                <label class="upload-btn" for="bg-image-upload">上传自定义背景图片</label>
+                <input type="file" id="bg-image-upload" class="file-input" accept="image/*" onchange="changeBgImage(event)">
+            </div>
+
+            <!-- 字体设置 -->
+            <div class="setting-group">
+                <h3>全局自定义字体 (.ttf/.otf)</h3>
+                <p style="font-size:11px; color:#999; margin-bottom:10px;">上传后全局文字将替换为你选择的字体</p>
+                <label class="upload-btn" for="font-upload">上传字体文件</label>
+                <input type="file" id="font-upload" class="file-input" accept=".ttf, .otf" onchange="changeFont(event)">
+            </div>
+
+            <div class="setting-group" style="background:transparent; border:none; padding:0; margin-top:auto;">
+                <label class="upload-btn" style="border-color:#ffcccc; color:#ff6666;" onclick="resetAll()">重置所有设置</label>
             </div>
         </div>
     </div>
 
     <script>
-        // ================= 全局变量与数据预加载 =================
-        let lorebooks = [];
-        let contacts = [];
-        let userPersona = { name: '', avatar: '', prompt: '' };
-        
-        function loadAllData() {
-            // 读取世界书
-            lorebooks = JSON.parse(localStorage.getItem('rp_lorebooks')) || [];
-            // 读取联系人
-            contacts = JSON.parse(localStorage.getItem('rp_contacts')) || [];
-            // 读取 User 面具
-            const savedPersona = localStorage.getItem('rp_persona');
-            if(savedPersona) userPersona = JSON.parse(savedPersona);
-            
-            // 渲染数据
-            renderLorebookList();
-            renderContactList();
-            renderContactSelector();
-            loadPersonaUI();
-        }
-
-        // 初始化
-        window.onload = function() {
-            // 读取 API 配置
-            document.getElementById('api-url').value = localStorage.getItem('api_url') || '';
-            document.getElementById('api-key').value = localStorage.getItem('api_key') || '';
-            document.getElementById('model-input').value = localStorage.getItem('api_model') || '';
-            document.getElementById('global-prompt').value = localStorage.getItem('global_prompt') || '';
-            
-            loadAllData();
-            updateClock();
-            setInterval(updateClock, 1000);
-        };
-
+        // ================= 基础功能 =================
         function updateClock() {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
@@ -603,6 +627,19 @@
             const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
             document.getElementById('time-display').innerText = `${hours}:${minutes}`;
             document.getElementById('date-display').innerText = `${now.getDate()} ${days[now.getDay()]} ·˖✶`;
+        }
+        setInterval(updateClock, 1000);
+
+        // 通用图片替换函数
+        function changeImage(event, targetId) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById(targetId).src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
         }
 
         function openApp(appId) {
@@ -614,6 +651,96 @@
         function closeApp(appId) {
             document.getElementById(appId).classList.remove('active');
         }
+
+        // ================= 美化面板逻辑 =================
+        function setBgColor(bg, dot, element) {
+            document.body.style.backgroundImage = 'none';
+            document.body.style.backgroundColor = bg;
+            document.documentElement.style.setProperty('--dot-color', dot);
+            setTimeout(() => {
+                document.body.style.backgroundImage = `radial-gradient(${dot} 1.2px, transparent 1.2px)`;
+            }, 10);
+            
+            // 同步 App 界面背景
+            document.querySelectorAll('.app-screen').forEach(app => {
+                app.style.backgroundColor = bg;
+                app.style.backgroundImage = `radial-gradient(${dot} 1.2px, transparent 1.2px)`;
+            });
+
+            document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
+            if(element) element.classList.add('active');
+        }
+
+        function changeBgImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.body.style.backgroundImage = `url(${e.target.result})`;
+                    document.body.style.backgroundSize = 'cover';
+                    document.body.style.backgroundPosition = 'center';
+                    
+                    document.querySelectorAll('.app-screen').forEach(app => {
+                        app.style.backgroundImage = `url(${e.target.result})`;
+                        app.style.backgroundSize = 'cover';
+                        app.style.backgroundPosition = 'center';
+                    });
+
+                    document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function changeFont(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fontFace = new FontFace('CustomUserFont', e.target.result);
+                fontFace.load().then(function(loadedFace) {
+                    document.fonts.add(loadedFace);
+                    document.documentElement.style.setProperty('--main-font', '"CustomUserFont", sans-serif');
+                    alert('字体已成功替换！');
+                }).catch(function(error) {
+                    alert('字体加载失败，请确保是有效的 .ttf 或 .otf 文件。');
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function resetAll() {
+            if(confirm("确定要重置所有美化设置吗？")) {
+                window.location.reload();
+            }
+        }
+
+        // ================= 全局变量与数据预加载 =================
+        let lorebooks = [];
+        let contacts = [];
+        let userPersona = { name: '', avatar: '', prompt: '' };
+        
+        function loadAllData() {
+            lorebooks = JSON.parse(localStorage.getItem('rp_lorebooks')) || [];
+            contacts = JSON.parse(localStorage.getItem('rp_contacts')) || [];
+            const savedPersona = localStorage.getItem('rp_persona');
+            if(savedPersona) userPersona = JSON.parse(savedPersona);
+            
+            renderLorebookList();
+            renderContactList();
+            renderContactSelector();
+            loadPersonaUI();
+        }
+
+        window.onload = function() {
+            document.getElementById('api-url').value = localStorage.getItem('api_url') || '';
+            document.getElementById('api-key').value = localStorage.getItem('api_key') || '';
+            document.getElementById('model-input').value = localStorage.getItem('api_model') || '';
+            document.getElementById('global-prompt').value = localStorage.getItem('global_prompt') || '';
+            
+            loadAllData();
+            updateClock();
+        };
 
         // ================= API & 全局提示词 =================
         async function fetchModels() {
@@ -708,7 +835,7 @@
             lorebooks.push({ id: 'lb_' + Date.now(), name: name, content: content });
             localStorage.setItem('rp_lorebooks', JSON.stringify(lorebooks));
             renderLorebookList();
-            updateLorebookDropdown(); // 重点：导入后立刻刷新联系人下拉框
+            updateLorebookDropdown(); 
             alert('导入成功！');
             document.getElementById('lorebook-upload').value = '';
         }
@@ -756,7 +883,6 @@
         function savePersona() {
             const name = document.getElementById('persona-name').value.trim();
             const prompt = document.getElementById('persona-prompt').value.trim();
-            
             userPersona = { name, prompt, avatar: tempPersonaAvatar };
             localStorage.setItem('rp_persona', JSON.stringify(userPersona));
             alert('面具已保存！');
@@ -817,7 +943,7 @@
             tempAvatarBase64 = null;
             const modal = document.getElementById('contact-modal');
             modal.classList.add('active');
-            updateLorebookDropdown(); // 确保每次打开都是最新的
+            updateLorebookDropdown();
 
             if (id) {
                 const c = contacts.find(x => x.id === id);
@@ -1017,10 +1143,8 @@
             
             if(history.length === 0 || history[history.length - 1].role === 'ai') return; 
 
-            // 核心：组装 System Prompt
             let systemPrompt = `你正在扮演角色：${c.name}。\n设定如下：${c.prompt}\n`;
             
-            // 注入世界书
             if (c.lorebookId) {
                 const lb = lorebooks.find(x => x.id === c.lorebookId);
                 if (lb) {
@@ -1030,22 +1154,18 @@
                 }
             }
 
-            // 注入 User 面具
             if (userPersona.name || userPersona.prompt) {
                 systemPrompt += `\n[对方身份设定]: 正在和你对话的人叫 ${userPersona.name || '未命名'}。`;
                 if (userPersona.prompt) systemPrompt += `Ta的背景是：${userPersona.prompt}`;
                 systemPrompt += '\n';
             }
 
-            // 注入全局提示词
             if (globalPrompt) {
                 systemPrompt += `\n[全局对话指令]: ${globalPrompt}\n`;
             }
 
-            // 强制分条指令
             systemPrompt += `\n[重要强制指令]: 请完全模拟真人的手机聊天方式。将你的回复拆分成多条简短的短句，每条短句之间必须用 "|||" 分隔（注意是三个竖线）。每条短句字数尽量少于30字，最多不要超过4条。不要输出其他多余的内容。`;
 
-            // AI 占位
             const aiMsgDiv = document.createElement('div');
             aiMsgDiv.className = 'msg ai';
             const aiBubble = document.createElement('div');
@@ -1084,9 +1204,9 @@
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder("utf-8");
                 
-                let fullText = ''; // 完整保存的全部文本
-                let currentAiBubble = aiBubble; // 当前正在输出的气泡
-                let bubbleText = ''; // 当前气泡积累的文本
+                let fullText = ''; 
+                let currentAiBubble = aiBubble; 
+                let bubbleText = ''; 
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -1103,16 +1223,12 @@
                                     fullText += delta;
                                     bubbleText += delta;
                                     
-                                    // 处理分条逻辑
                                     if (bubbleText.includes('|||')) {
                                         const parts = bubbleText.split('|||');
-                                        // 把分隔符之前的部分放在当前气泡显示
                                         currentAiBubble.innerText = parts[0];
                                         
-                                        // 剩下的部分留在新气泡
                                         bubbleText = parts.slice(1).join('|||');
                                         
-                                        // 如果还有剩下的，创建新气泡
                                         if (bubbleText) {
                                             const newMsgDiv = document.createElement('div');
                                             newMsgDiv.className = 'msg ai';
@@ -1123,12 +1239,9 @@
                                             currentAiBubble = newBubble;
                                         }
                                     } else {
-                                        // 没凑齐分隔符时，要防止把 || 打出来
                                         if (bubbleText.endsWith('|')) {
-                                            // 暂时不显示最后一个 |
                                             currentAiBubble.innerText = bubbleText.slice(0, -1);
                                         } else if (bubbleText.endsWith('||')) {
-                                            // 暂时不显示最后两个 ||
                                             currentAiBubble.innerText = bubbleText.slice(0, -2);
                                         } else {
                                             currentAiBubble.innerText = bubbleText;
@@ -1141,16 +1254,13 @@
                     }
                 }
                 
-                // 收尾处理：如果有残留的未显示文本（极少数情况）
                 if (bubbleText.trim() !== '') {
                     currentAiBubble.innerText = bubbleText;
                 }
-                // 去掉可能残留的空气泡
                 if (currentAiBubble.innerText === '') {
                     currentAiBubble.parentElement.remove();
                 }
 
-                // 保存记录时，将 ||| 替换成换行符，方便查看历史记录
                 saveChatToLocal('ai', fullText.replace(/\|\|\|/g, '\n'), null);
 
             } catch (error) {
