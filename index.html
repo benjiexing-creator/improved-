@@ -70,12 +70,13 @@
         .battery::after { content: ''; position: absolute; right: -3px; top: 3px; width: 2px; height: 3px; background: var(--text-main); border-radius: 0 1px 1px 0; }
         .battery-level { width: 75%; height: 100%; background: var(--text-main); border-radius: 1px; }
 
-        /* 桌面 */
+        /* 桌面翻页 */
         .pages-container {
             display: flex; width: 100%; flex: 1;
             overflow-x: auto; overflow-y: hidden;
             scroll-snap-type: x mandatory; scrollbar-width: none;
             -webkit-overflow-scrolling: touch;
+            z-index: 1; /* 确保在背景之上，App界面之下 */
         }
         .pages-container::-webkit-scrollbar { display: none; }
 
@@ -90,11 +91,9 @@
             background: var(--glass-bg); backdrop-filter: blur(12px);
             border: 1px solid var(--glass-border); border-radius: var(--border-radius);
             box-shadow: var(--shadow); padding: 15px; position: relative; overflow: hidden;
-            cursor: pointer;
+            transition: transform 0.1s;
         }
-        .widget:active { transform: scale(0.98); }
         .no-click { cursor: default; }
-        .no-click:active { transform: none; }
         
         .date-text { font-size: 13px; letter-spacing: 1px; color: var(--text-light); margin-bottom: 5px; text-align: center;}
         .time-text { font-size: 4.5rem; font-weight: 300; line-height: 1; letter-spacing: -2px; color: #5a5a5a; text-align: center; }
@@ -105,10 +104,16 @@
         .music-info h4 { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
         .music-info p { font-size: 10px; color: var(--text-light); }
 
-        .widget-photo { padding: 0; }
+        .widget-photo { padding: 0; position: relative; }
         .widget-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .photo-tall { height: 180px; }
         .photo-square { aspect-ratio: 1; height: auto; }
+
+        /* 全局透明上传输入框 (核心修复) */
+        .file-input-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0; cursor: pointer; z-index: 10;
+        }
 
         .widget-search { display: flex; align-items: center; gap: 8px; padding: 10px 15px; border-radius: 25px; }
         .widget-search svg { width: 14px; height: 14px; fill: var(--text-light); }
@@ -133,7 +138,8 @@
             border-radius: 25px; padding: 10px 20px; display: flex; justify-content: space-between;
             align-items: center; box-shadow: 0 8px 25px rgba(0,0,0,0.08); z-index: 100;
         }
-        .dock-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: #eaeaea; cursor: pointer; overflow: hidden;}
+        .dock-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: #eaeaea; cursor: pointer; overflow: hidden; transition: transform 0.1s;}
+        .dock-icon:active { transform: scale(0.9); }
         .dock-icon svg { width: 20px; height: 20px; fill: var(--text-main); }
 
         /* ================= App 屏幕通用 ================= */
@@ -142,8 +148,15 @@
             background: var(--bg-color); background-image: radial-gradient(var(--dot-color) 1.2px, transparent 1.2px);
             background-size: 22px 22px; z-index: 500; display: flex; flex-direction: column;
             transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            /* 核心修复：防止未打开时遮挡下层点击 */
+            visibility: hidden; 
+            pointer-events: none;
         }
-        .app-screen.active { transform: translateY(0); }
+        .app-screen.active { 
+            transform: translateY(0); 
+            visibility: visible;
+            pointer-events: auto;
+        }
         
         .app-header {
             display: flex; align-items: center; justify-content: space-between;
@@ -216,7 +229,7 @@
         .modal-content h3 { font-size: 16px; text-align: center; margin-bottom: 5px; color: #333;}
         .modal-content .form-group label { font-size: 11px; }
         .modal-content .form-group textarea { height: 100px; }
-        .avatar-upload-row { display: flex; align-items: center; gap: 15px; margin-bottom: 12px;}
+        .avatar-upload-row { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; position: relative;}
         .avatar-preview { width: 60px; height: 60px; border-radius: 50%; background: #eee; object-fit: cover; border: 1px solid #ddd; }
         .btn-group { display: flex; gap: 10px; margin-top: 10px;}
         .btn-group .btn { flex: 1; }
@@ -247,7 +260,7 @@
         .action-btn:active { transform: scale(0.9); }
         .action-btn svg { width: 18px; height: 18px; }
         
-        .img-btn { background: #f0f0f0; }
+        .img-btn { background: #f0f0f0; position: relative;}
         .img-btn svg { fill: #666; }
         
         .send-btn { background: #e6e6e6; }
@@ -279,26 +292,27 @@
         /* --- 美化面板 --- */
         .custom-panel {
             position: fixed; top: 0; right: -100%; width: 100%; max-width: 380px; height: 100%;
-            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); z-index: 999;
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); z-index: 9999;
             box-shadow: -5px 0 30px rgba(0,0,0,0.1); transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             padding: 25px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;
+            pointer-events: none; /* 默认不响应点击 */
         }
-        .custom-panel.active { right: 0; }
+        .custom-panel.active { right: 0; pointer-events: auto; }
         .panel-header { display: flex; justify-content: space-between; align-items: center; }
         .panel-header h2 { font-size: 18px; font-weight: 600; color: #333; }
         .close-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #eee; border-radius: 50%; font-weight: bold; color: #666;}
         
-        .setting-group { background: #f8f8f8; padding: 15px; border-radius: 12px; border: 1px solid #eee; }
+        .setting-group { background: #f8f8f8; padding: 15px; border-radius: 12px; border: 1px solid #eee; position: relative;}
         .setting-group h3 { font-size: 13px; color: #666; margin-bottom: 10px; font-weight: 500;}
         
         .color-options { display: flex; gap: 10px; flex-wrap: wrap; }
         .color-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .color-btn.active { border-color: #333; }
 
-        .upload-btn { display: block; width: 100%; padding: 12px; text-align: center; background: #fff; border: 1px dashed #ccc; border-radius: 8px; font-size: 13px; color: #555; cursor: pointer; margin-top: 10px;}
+        .upload-btn { display: block; width: 100%; padding: 12px; text-align: center; background: #fff; border: 1px dashed #ccc; border-radius: 8px; font-size: 13px; color: #555; cursor: pointer; margin-top: 10px; position: relative; overflow: hidden;}
         .upload-btn:active { background: #f0f0f0; }
         
-        .file-input { display: none; }
+        .file-input { display: none; } /* 用于面板里的隐藏input，面板已做pointer-events处理 */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
     </style>
@@ -333,21 +347,22 @@
                         ⋆｡°✩ ੈ✩‧₊
                     </div>
                 </div>
-                <!-- 音乐卡片 (点击换图) -->
-                <div class="widget widget-music" onclick="document.getElementById('music-upload').click()">
+                
+                <!-- 音乐卡片：使用透明覆盖 input -->
+                <div class="widget widget-music" style="position: relative;">
                     <img src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=150&q=80" class="music-cover" id="music-cover">
                     <div class="music-info">
                         <h4>Faded Memories</h4>
                         <p>Ambient Mix</p>
                     </div>
+                    <input type="file" class="file-input-overlay" accept="image/*" onchange="changeImage(event, 'music-cover')">
                 </div>
-                <input type="file" id="music-upload" class="file-input" accept="image/*" onchange="changeImage(event, 'music-cover')">
 
-                <!-- 大照片卡片 (点击换图) -->
-                <div class="widget widget-photo photo-tall" onclick="document.getElementById('photo1-upload').click()">
+                <!-- 大照片卡片：使用透明覆盖 input -->
+                <div class="widget widget-photo photo-tall">
                     <img src="https://images.unsplash.com/photo-1584824486509-112e4181ff6b?auto=format&fit=crop&w=500&q=80" id="photo-card-1">
+                    <input type="file" class="file-input-overlay" accept="image/*" onchange="changeImage(event, 'photo-card-1')">
                 </div>
-                <input type="file" id="photo1-upload" class="file-input" accept="image/*" onchange="changeImage(event, 'photo-card-1')">
             </div>
 
             <!-- 第二页 -->
@@ -358,31 +373,26 @@
                 </div>
 
                 <div class="grid-2" style="align-items: start;">
-                    <!-- 头像卡片 (点击换图) -->
-                    <div class="widget widget-photo photo-square" onclick="document.getElementById('avatar-upload').click()">
+                    <!-- 头像卡片：使用透明覆盖 input -->
+                    <div class="widget widget-photo photo-square">
                         <img src="https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=300&q=80" id="avatar-card">
+                        <input type="file" class="file-input-overlay" accept="image/*" onchange="changeImage(event, 'avatar-card')">
                     </div>
-                    <input type="file" id="avatar-upload" class="file-input" accept="image/*" onchange="changeImage(event, 'avatar-card')">
 
                     <!-- App 图标组 -->
                     <div class="widget-icons-grid">
-                        <!-- 1. 联系人 -->
                         <div class="icon-box" onclick="openApp('contacts-screen')" title="Contacts">
                             <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                         </div>
-                        <!-- 2. 聊天 -->
                         <div class="icon-box" onclick="openChatApp()" title="Messages">
                             <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
                         </div>
-                        <!-- 3. 世界书 -->
                         <div class="icon-box" onclick="openApp('lorebook-screen')" title="Lorebooks">
                             <svg viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
                         </div>
-                        <!-- 4. User面具 -->
                         <div class="icon-box" onclick="openApp('persona-screen')" title="User Persona">
                             <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
                         </div>
-                        <!-- 5. API设置 -->
                         <div class="icon-box" onclick="openApp('api-screen')" title="API Settings">
                             <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
                         </div>
@@ -393,8 +403,8 @@
 
         <!-- 底部 Dock -->
         <div class="dock">
-            <!-- 美化面板开关 (已修复) -->
-            <div class="dock-icon" onclick="document.getElementById('custom-panel').classList.add('active')">
+            <!-- 美化面板开关 -->
+            <div class="dock-icon" onclick="openPanel()">
                 <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
             </div>
             <div class="dock-icon" onclick="openChatApp()">
@@ -405,7 +415,7 @@
             </div>
         </div>
 
-        <!-- ================= 1. API 设置 & 全局提示词 ================= -->
+        <!-- ================= 1. API 设置 ================= -->
         <div class="app-screen" id="api-screen">
             <div class="app-header">
                 <h2>API 与全局设置</h2>
@@ -433,12 +443,11 @@
                     <label>全局网络聊天提示词 (System Prompt)</label>
                     <textarea id="global-prompt" placeholder="例如：我们在使用手机微信聊天，请简短回复，每次不超过两句话。"></textarea>
                 </div>
-
                 <button class="btn" onclick="saveApiConfig()" style="margin-top: 10px;">保存全部配置</button>
             </div>
         </div>
 
-        <!-- ================= 2. 世界书 App ================= -->
+        <!-- ================= 2. 世界书 ================= -->
         <div class="app-screen" id="lorebook-screen">
             <div class="app-header">
                 <h2>世界书</h2>
@@ -446,19 +455,17 @@
                     <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
                 </div>
             </div>
-            
-            <div style="padding: 15px; flex-shrink: 0;">
-                <label class="btn btn-outline" for="lorebook-upload" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <div style="padding: 15px; flex-shrink: 0; position: relative;">
+                <div class="btn btn-outline" style="display: flex; align-items: center; justify-content: center; gap: 8px; position: relative;">
                     <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:currentColor;"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
                     导入 TXT 或 DOCX 文件
-                </label>
-                <input type="file" id="lorebook-upload" class="file-input" accept=".txt,.docx" onchange="importLorebook(event)">
+                    <input type="file" class="file-input-overlay" accept=".txt,.docx" onchange="importLorebook(event)">
+                </div>
             </div>
-
             <div class="lorebook-list" id="lorebook-list"></div>
         </div>
 
-        <!-- ================= 3. 联系人 App ================= -->
+        <!-- ================= 3. 联系人 ================= -->
         <div class="app-screen" id="contacts-screen">
             <div class="app-header">
                 <h2>联系人</h2>
@@ -478,8 +485,10 @@
                     
                     <div class="avatar-upload-row">
                         <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>" class="avatar-preview" id="contact-avatar-preview">
-                        <label class="btn btn-outline" style="padding: 8px 12px; font-size: 12px; margin:0;" for="contact-avatar-upload">上传头像</label>
-                        <input type="file" id="contact-avatar-upload" class="file-input" accept="image/*" onchange="previewContactAvatar(event)">
+                        <div class="btn btn-outline" style="padding: 8px 12px; font-size: 12px; margin:0; position: relative;">
+                            上传头像
+                            <input type="file" class="file-input-overlay" accept="image/*" onchange="previewContactAvatar(event)">
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -510,7 +519,7 @@
             </div>
         </div>
 
-        <!-- ================= 4. User 面具 App ================= -->
+        <!-- ================= 4. User 面具 ================= -->
         <div class="app-screen" id="persona-screen">
             <div class="app-header">
                 <h2>User 面具设定</h2>
@@ -521,8 +530,10 @@
             <div class="api-form">
                 <div class="avatar-upload-row">
                     <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>" class="avatar-preview" id="persona-avatar-preview">
-                    <label class="btn btn-outline" style="padding: 8px 12px; font-size: 12px; margin:0;" for="persona-avatar-upload">上传我的头像</label>
-                    <input type="file" id="persona-avatar-upload" class="file-input" accept="image/*" onchange="previewPersonaAvatar(event)">
+                    <div class="btn btn-outline" style="padding: 8px 12px; font-size: 12px; margin:0; position: relative;">
+                        上传我的头像
+                        <input type="file" class="file-input-overlay" accept="image/*" onchange="previewPersonaAvatar(event)">
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -537,7 +548,7 @@
             </div>
         </div>
 
-        <!-- ================= 5. 聊天 App ================= -->
+        <!-- ================= 5. 聊天 ================= -->
         <div class="app-screen" id="chat-screen">
             <div class="app-header">
                 <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="toggleContactSelector()">
@@ -564,10 +575,10 @@
                 </div>
                 
                 <div class="chat-input-row">
-                    <button class="action-btn img-btn" onclick="document.getElementById('chat-img-upload').click()">
+                    <div class="action-btn img-btn">
                         <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-                    </button>
-                    <input type="file" id="chat-img-upload" class="file-input" accept="image/*" onchange="handleImageUpload(event)">
+                        <input type="file" class="file-input-overlay" accept="image/*" onchange="handleImageUpload(event)">
+                    </div>
                     
                     <input type="text" id="chat-input" placeholder="输入消息..." onkeydown="if(event.key==='Enter') sendUserMessage()">
                     
@@ -582,14 +593,13 @@
             </div>
         </div>
 
-        <!-- ================= 6. 美化面板 (已修复) ================= -->
+        <!-- ================= 6. 美化面板 ================= -->
         <div class="custom-panel" id="custom-panel">
             <div class="panel-header">
                 <h2>美化设置</h2>
-                <div class="close-btn" onclick="document.getElementById('custom-panel').classList.remove('active')">×</div>
+                <div class="close-btn" onclick="closePanel()">×</div>
             </div>
             
-            <!-- 背景设置 -->
             <div class="setting-group">
                 <h3>更换背景颜色</h3>
                 <div class="color-options">
@@ -599,21 +609,23 @@
                     <div class="color-btn" style="background:#e0f2f1;" onclick="setBgColor('#e0f2f1', '#b2dfdb', this)"></div>
                     <div class="color-btn" style="background:#fce4ec;" onclick="setBgColor('#fce4ec', '#f8bbd0', this)"></div>
                 </div>
-                
-                <label class="upload-btn" for="bg-image-upload">上传自定义背景图片</label>
-                <input type="file" id="bg-image-upload" class="file-input" accept="image/*" onchange="changeBgImage(event)">
+                <div class="upload-btn">
+                    上传自定义背景图片
+                    <input type="file" class="file-input-overlay" accept="image/*" onchange="changeBgImage(event)">
+                </div>
             </div>
 
-            <!-- 字体设置 -->
             <div class="setting-group">
                 <h3>全局自定义字体 (.ttf/.otf)</h3>
                 <p style="font-size:11px; color:#999; margin-bottom:10px;">上传后全局文字将替换为你选择的字体</p>
-                <label class="upload-btn" for="font-upload">上传字体文件</label>
-                <input type="file" id="font-upload" class="file-input" accept=".ttf, .otf" onchange="changeFont(event)">
+                <div class="upload-btn">
+                    上传字体文件
+                    <input type="file" class="file-input-overlay" accept=".ttf, .otf" onchange="changeFont(event)">
+                </div>
             </div>
 
             <div class="setting-group" style="background:transparent; border:none; padding:0; margin-top:auto;">
-                <label class="upload-btn" style="border-color:#ffcccc; color:#ff6666;" onclick="resetAll()">重置所有设置</label>
+                <div class="upload-btn" style="border-color:#ffcccc; color:#ff6666;" onclick="resetAll()">重置所有设置</div>
             </div>
         </div>
     </div>
@@ -653,6 +665,13 @@
         }
 
         // ================= 美化面板逻辑 =================
+        function openPanel() {
+            document.getElementById('custom-panel').classList.add('active');
+        }
+        function closePanel() {
+            document.getElementById('custom-panel').classList.remove('active');
+        }
+
         function setBgColor(bg, dot, element) {
             document.body.style.backgroundImage = 'none';
             document.body.style.backgroundColor = bg;
@@ -661,7 +680,6 @@
                 document.body.style.backgroundImage = `radial-gradient(${dot} 1.2px, transparent 1.2px)`;
             }, 10);
             
-            // 同步 App 界面背景
             document.querySelectorAll('.app-screen').forEach(app => {
                 app.style.backgroundColor = bg;
                 app.style.backgroundImage = `radial-gradient(${dot} 1.2px, transparent 1.2px)`;
@@ -685,7 +703,6 @@
                         app.style.backgroundSize = 'cover';
                         app.style.backgroundPosition = 'center';
                     });
-
                     document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
                 };
                 reader.readAsDataURL(file);
@@ -837,7 +854,7 @@
             renderLorebookList();
             updateLorebookDropdown(); 
             alert('导入成功！');
-            document.getElementById('lorebook-upload').value = '';
+            event.target.value = ''; // 清空 input
         }
 
         function updateLorebookDropdown() {
