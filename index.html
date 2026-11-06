@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My AI Phone</title>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        /* 全局变量 */
+        :root {
+            --bg-color: #f2f2f3;
+            --text-main: #4a4a4a;
+            --text-light: #8c8c8c;
+            --glass-bg: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.9);
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            --border-radius: 18px;
+            --dot-color: #d6d6d6;
+            --main-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+            --primary: #5a5a5a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            font-family: var(--main-font);
+            background-color: var(--bg-color);
+            background-image: radial-gradient(var(--dot-color) 1.2px, transparent 1.2px);
+            background-size: 22px 22px;
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            transition: background 0.3s;
+        }
+
+        /* 手机容器 */
+        .phone-container {
+            width: 100%;
+            max-width: 420px;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 顶部状态栏 */
+        .status-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 12px; font-weight: 500; padding: 15px 20px 5px;
+            z-index: 10; flex-shrink: 0;
+        }
+        .status-right { display: flex; align-items: center; gap: 6px; }
+        .signal-bars { display: flex; align-items: flex-end; gap: 2px; height: 10px; }
+        .signal-bars div { width: 3px; background-color: var(--text-main); border-radius: 1px; }
+        .signal-bars div:nth-child(1) { height: 4px; }
+        .signal-bars div:nth-child(2) { height: 6px; }
+        .signal-bars div:nth-child(3) { height: 8px; }
+        .signal-bars div:nth-child(4) { height: 10px; }
+        .battery { width: 22px; height: 11px; border: 1px solid var(--text-main); border-radius: 3px; position: relative; padding: 1.5px; }
+        .battery::after { content: ''; position: absolute; right: -3px; top: 3px; width: 2px; height: 3px; background: var(--text-main); border-radius: 0 1px 1px 0; }
+        .battery-level { width: 75%; height: 100%; background: var(--text-main); border-radius: 1px; }
+
+        /* 桌面 */
+        .pages-container {
+            display: flex; width: 100%; flex: 1;
+            overflow-x: auto; overflow-y: hidden;
+            scroll-snap-type: x mandatory; scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+        .pages-container::-webkit-scrollbar { display: none; }
+
+        .page {
+            flex: 0 0 100%; width: 100%; height: 100%; scroll-snap-align: start;
+            padding: 10px 15px 90px 15px; display: flex; flex-direction: column; gap: 12px;
+            overflow-y: hidden;
+        }
+
+        /* 通用组件 */
+        .widget {
+            background: var(--glass-bg); backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border); border-radius: var(--border-radius);
+            box-shadow: var(--shadow); padding: 15px; position: relative; overflow: hidden;
+        }
+        .no-click { cursor: default; }
+        
+        .date-text { font-size: 13px; letter-spacing: 1px; color: var(--text-light); margin-bottom: 5px; text-align: center;}
+        .time-text { font-size: 4.5rem; font-weight: 300; line-height: 1; letter-spacing: -2px; color: #5a5a5a; text-align: center; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .widget-music { display: flex; gap: 12px; align-items: center; padding: 12px; }
+        .music-cover { width: 50px; height: 50px; border-radius: 10px; background: #ddd; object-fit: cover; }
+        .music-info h4 { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+        .music-info p { font-size: 10px; color: var(--text-light); }
+
+        .widget-photo { padding: 0; }
+        .widget-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo-tall { height: 180px; }
+        .photo-square { aspect-ratio: 1; height: auto; }
+
+        .widget-search { display: flex; align-items: center; gap: 8px; padding: 10px 15px; border-radius: 25px; }
+        .widget-search svg { width: 14px; height: 14px; fill: var(--text-light); }
+        .search-text { font-size: 11px; color: var(--text-light); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* App 图标组 */
+        .widget-icons-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; background: transparent; border: none; box-shadow: none; padding: 0; }
+        .icon-box { 
+            background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 14px; 
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
+            box-shadow: var(--shadow); overflow: hidden; cursor: pointer;
+        }
+        .icon-box svg { width: 22px; height: 22px; fill: var(--text-main); opacity: 0.8; }
+
+        /* 底部 Dock */
+        .dock {
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            width: calc(100% - 30px); background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(15px); border: 1px solid var(--glass-border);
+            border-radius: 25px; padding: 10px 20px; display: flex; justify-content: space-between;
+            align-items: center; box-shadow: 0 8px 25px rgba(0,0,0,0.08); z-index: 100;
+        }
+        .dock-icon { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: #eaeaea; cursor: pointer; overflow: hidden;}
+        .dock-icon svg { width: 20px; height: 20px; fill: var(--text-main); }
+
+        /* ================= App 屏幕通用 ================= */
+        .app-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); background-image: radial-gradient(var(--dot-color) 1.2px, transparent 1.2px);
+            background-size: 22px 22px; z-index: 500; display: flex; flex-direction: column;
+            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .app-screen.active { transform: translateY(0); }
+        
+        .app-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 45px 20px 15px; background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(15px); border-bottom: 1px solid var(--glass-border); flex-shrink: 0;
+        }
+        .app-header h2 { font-size: 16px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 10px;}
+        .back-btn { width: 32px; height: 32px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;}
+        .back-btn svg { width: 16px; height: 16px; fill: var(--text-main); }
+        .header-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd;}
+
+        /* --- 通用表单 --- */
+        .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px;}
+        .form-group label { font-size: 12px; color: var(--text-light); font-weight: 500;}
+        .form-group input, .form-group select, .form-group textarea { 
+            padding: 12px; border-radius: 10px; border: 1px solid #ddd; 
+            background: var(--glass-bg); font-size: 14px; outline: none; font-family: var(--main-font);
+        }
+        .form-group textarea { resize: none; height: 80px; }
+        .btn { padding: 12px; border-radius: 10px; border: none; background: var(--primary); color: white; font-size: 14px; font-weight: 500; cursor: pointer; text-align: center;}
+        .btn:active { opacity: 0.8; }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+
+        /* --- 设置表单滚动区 --- */
+        .api-form { padding: 20px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+
+        /* --- 世界书 App --- */
+        .lorebook-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .lorebook-card {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: 15px; padding: 15px; box-shadow: var(--shadow);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .lorebook-info h4 { font-size: 15px; margin-bottom: 4px; color: #333;}
+        .lorebook-info p { font-size: 11px; color: #888; }
+        .delete-lore-btn { width: 30px; height: 30px; border-radius: 50%; background: #fee; display: flex; align-items: center; justify-content: center; cursor: pointer;}
+        .delete-lore-btn svg { width: 16px; height: 16px; fill: #ff4d4f; }
+
+        /* --- 联系人 App --- */
+        .contact-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .contact-card {
+            display: flex; align-items: center; gap: 15px; background: var(--glass-bg);
+            border: 1px solid var(--glass-border); border-radius: 15px; padding: 15px;
+            box-shadow: var(--shadow); cursor: pointer;
+        }
+        .contact-card:active { background: #eee; }
+        .contact-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: #ddd; flex-shrink: 0;}
+        .contact-info { flex: 1; overflow: hidden; }
+        .contact-info h4 { font-size: 15px; margin-bottom: 4px; color: #333;}
+        .contact-info p { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .add-btn {
+            position: absolute; bottom: 30px; right: 30px; width: 50px; height: 50px;
+            background: var(--primary); border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; z-index: 10;
+        }
+        .add-btn svg { width: 24px; height: 24px; fill: white; }
+
+        /* 弹窗通用 */
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); z-index: 1000; display: none;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: #fff; width: 100%; max-width: 360px; border-radius: 20px;
+            padding: 20px; display: flex; flex-direction: column; gap: 12px; max-height: 90%; overflow-y: auto;
+        }
+        .modal-content h3 { font-size: 16px; text-align: center; margin-bottom: 5px; color: #333;}
+        .modal-content .form-group label { font-size: 11px; }
+        .modal-content .form-group textarea { height: 100px; }
+        .avatar-upload-row { display: flex; align-items: center; gap: 15px; margin-bottom: 12px;}
+        .avatar-preview { width: 60px; height: 60px; border-radius: 50%; background: #eee; object-fit: cover; border: 1px solid #ddd; }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px;}
+        .btn-group .btn { flex: 1; }
+        .btn-danger { background: #ff4d4f; }
+
+        /* --- 聊天 App --- */
+        .chat-container { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { display: flex; flex-direction: column; max-width: 85%; }
+        .msg.user { align-self: flex-end; align-items: flex-end; }
+        .msg.ai { align-self: flex-start; align-items: flex-start; }
+        .bubble { padding: 10px 14px; border-radius: 15px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
+        .msg.user .bubble { background: var(--primary); color: white; border-bottom-right-radius: 2px; }
+        .msg.ai .bubble { background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--text-main); border-bottom-left-radius: 2px; }
+        
+        .chat-input-area { 
+            padding: 10px 15px 25px; background: rgba(255,255,255,0.9); 
+            backdrop-filter: blur(15px); border-top: 1px solid var(--glass-border);
+            display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;
+        }
+        
+        .chat-input-row { display: flex; align-items: center; gap: 8px; }
+        .chat-input-row input[type="text"] { 
+            flex: 1; padding: 10px 14px; border-radius: 20px; border: 1px solid #ddd; 
+            background: #fff; font-size: 14px; outline: none; min-width: 0;
+        }
+        
+        .action-btn { width: 36px; height: 36px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: transform 0.1s;}
+        .action-btn:active { transform: scale(0.9); }
+        .action-btn svg { width: 18px; height: 18px; }
+        
+        .img-btn { background: #f0f0f0; }
+        .img-btn svg { fill: #666; }
+        
+        .send-btn { background: #e6e6e6; }
+        .send-btn svg { fill: #666; }
+        
+        .wake-btn { background: var(--primary); }
+        .wake-btn svg { fill: white; }
+
+        /* 图片预览 */
+        .image-preview-container { display: none; position: relative; width: 60px; height: 60px; margin-bottom: 5px;}
+        .image-preview-container.active { display: block; }
+        .image-preview-container img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;}
+        .remove-img { position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; background: #ff4d4f; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer;}
+        .chat-img { max-width: 100%; max-height: 200px; border-radius: 10px; margin-bottom: 5px; display: block;}
+
+        /* 选择联系人浮层 */
+        .contact-selector {
+            position: absolute; top: 90px; left: 20px; right: 20px;
+            background: #fff; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            z-index: 600; max-height: 300px; overflow-y: auto; display: none;
+            border: 1px solid #eee;
+        }
+        .contact-selector.active { display: block; }
+        .selector-item { padding: 12px 15px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f5f5f5; cursor: pointer;}
+        .selector-item:active { background: #f9f9f9; }
+        .selector-item img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover;}
+        .selector-item span { font-size: 14px; color: #333;}
+
+        .file-input { display: none; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+    <div class="phone-container">
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <span>联通 5G</span>
+            <div class="status-right">
+                <div class="signal-bars"><div></div><div></div><div></div><div></div></div>
+                <div class="battery"><div class="battery-level"></div></div>
+            </div>
+        </div>
+
+        <!-- 桌面翻页 -->
+        <div class="pages-container" id="pages">
+            <!-- 第一页 -->
+            <div class="page">
+                <div class="widget no-click" style="background:transparent;border:none;box-shadow:none;">
+                    <div class="date-text" id="date-display">28 周日 ·˖✶</div>
+                    <div class="time-text" id="time-display">08:15</div>
+                </div>
+                <div class="grid-2">
+                    <div class="widget no-click" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;">
+                        <div style="font-size: 11px; color: #777; margin-bottom: 4px;">Days With You</div>
+                        <div style="font-size: 16px; font-weight: 600; letter-spacing: 0.5px;">1024 <span style="font-size:11px;font-weight:400">:15:30:00</span></div>
+                        <div style="font-size: 9px; color: #999; margin-top: 4px; display: flex; gap: 8px;"><span>D</span><span>H</span><span>M</span><span>S</span></div>
+                    </div>
+                    <div class="widget no-click" style="display:flex;justify-content:center;align-items:center;background:transparent;border:none;font-size:16px;color:#aaa;">
+                        ⋆｡°✩ ੈ✩‧₊
+                    </div>
+                </div>
+                <div class="widget widget-music no-click">
+                    <img src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=150&q=80" class="music-cover">
+                    <div class="music-info">
+                        <h4>Faded Memories</h4>
+                        <p>Ambient Mix</p>
+                    </div>
+                </div>
+                <div class="widget widget-photo photo-tall no-click">
+                    <img src="https://images.unsplash.com/photo-1584824486509-112e4181ff6b?auto=format&fit=crop&w=500&q=80">
+                </div>
+            </div>
+
+            <!-- 第二页 -->
+            <div class="page">
+                <div class="widget widget-search no-click" style="margin-top: 10px;">
+                    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    <span class="search-text">Roleplay Platform</span>
+                </div>
+
+                <div class="grid-2" style="align-items: start;">
+                    <div class="widget widget-photo photo-square no-click">
+                        <img src="https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=300&q=80">
+                    </div>
+
+                    <!-- App 图标组 -->
+                    <div class="widget-icons-grid">
+                        <!-- 1. 联系人 -->
+                        <div class="icon-box" onclick="openApp('contacts-screen')" title="Contacts">
+                            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        </div>
+                        <!-- 2. 聊天 -->
+                        <div class="icon-box" onclick="openChatApp()" title="Messages">
+                            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+                        </div>
+                        <!-- 3. 世界书 -->
+                        <div class="icon-box" onclick="openApp('lorebook-screen')" title="Lorebooks">
+                            <svg viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+                        </div>
+                        <!-- 4. User面具 -->
+                        <div class="icon-box" onclick="openApp('persona-screen')" title="User Persona">
+                            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                        </div>
+                        <!-- 5. API设置 -->
+                        <div class="icon-box" onclick="openApp('api-screen')" title="API Settings">
+                            <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部 Dock -->
+        <div class="dock">
+            <div class="dock-icon" onclick="document.getElementById('custom-panel').classList.add('active')">
+                <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+            </div>
+            <div class="dock-icon" onclick="openChatApp()">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+            </div>
+            <div class="dock-icon">
+                <img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=100&q=80" style="width:100%;height:100%;object-fit:cover;">
+            </div>
+        </div>
+
+        <!-- ================= 1. API 设置 & 全局提示词 ================= -->
+        <div class="app-screen" id="api-screen">
+            <div class="app-header">
+                <h2>API 与全局设置</h2>
+                <div class="back-btn" onclick="closeApp('api-screen')">
+                    <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                </div>
+            </div>
+            <div class="api-form">
+                <div class="form-group">
+                    <label>API Base URL (需包含 /v1)</label>
+                    <input type="text" id="api-url" placeholder="https://api.openai.com/v1">
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" id="api-key" placeholder="sk-...">
+                </div>
+                <button class="btn btn-outline" onclick="fetchModels()">拉取模型列表</button>
+                <div class="form-group">
+                    <label>选择或输入模型</label>
+                    <select id="model-select" style="display:none; margin-bottom: 5px;"></select>
+                    <input type="text" id="model-input" placeholder="如 gpt-4o">
+                </div>
+                
+                <div class="form-group" style="margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 15px;">
+                    <label>全局网络聊天提示词 (System Prompt)</label>
+                    <textarea id="global-prompt" placeholder="例如：我们在使用手机微信聊天，请简短回复，每次不超过两句话。"></textarea>
+                </div>
+
+                <button class="btn" onclick="saveApiConfig()" style="margin-top: 10px;">保存全部配置</button>
+            </div>
+        </div>
+
+        <!-- ================= 2. 世界书 App ================= -->
+        <div class="app-screen" id="lorebook-screen">
+            <div class="app-header">
+                <h2>世界书</h2>
+                <div class="back-btn" onclick="closeApp('lorebook-screen')">
+                    <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                </div>
+            </div>
+            
+            <div style="padding: 15px; flex-shrink: 0;">
+                <label class="btn btn-outline" for="lorebook-upload" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:currentColor;"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                    导入 TXT 或 DOCX 文件
+                </label>
+                <input type="file" id="lorebook-upload" class="file-input" accept=".txt,.docx" onchange="importLorebook(event)">
+            </div>
+
+            <div class="lorebook-list" id="lorebook-list"></div>
+        </div>
+
+        <!-- ================= 3. 联系人 App ================= -->
+        <div class="app-screen" id="contacts-screen">
+            <div class="app-header">
+                <h2>联系人</h2>
+                <div class="back-btn" onclick="closeApp('contacts-screen')">
+                    <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                </div>
+            </div>
+            <div class="contact-list" id="contact-list"></div>
+            <div class="add-btn" onclick="openContactModal()">
+                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            </div>
+
+            <div class="modal-overlay" id="contact-modal">
+                <div class="modal-content">
+                    <h3 id="modal-title">创建角色</h3>
+                    <input type="hidden" id="contact-id">
+                    
+                    <div class="avatar-upload-row">
+                        <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>" class="avatar-preview" id="contact-avatar-preview">
+                        <label class="btn btn-outline" style="padding: 8px 12px; font-size: 12px; margin:0;" for="contact-avatar-upload">上传头像</label>
+                        <input type="file" id="contact-avatar-upload" class="file-input" accept="image/*" onchange="previewContactAvatar(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label>角色名称</label>
+                        <input type="text" id="contact-name" placeholder="例如：冷酷骑士">
+                    </div>
+                    <div class="form-group">
+                        <label>人设设定 (System Prompt)</label>
+                        <textarea id="contact-prompt" placeholder="描述角色的性格、背景、说话语气等..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>绑定世界书 (可选)</label>
+                        <select id="contact-lorebook">
+                            <option value="">不绑定</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>开场白</label>
+                        <input type="text" id="contact-greeting" placeholder="例如：你终于来了。">
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-danger" id="delete-contact-btn" onclick="deleteContact()" style="display:none;">删除</button>
+                        <button class="btn" onclick="saveContact()">保存</button>
+                    </div>
+                    <button class="btn btn-outline" onclick="document.getElementById('contact-modal').classList.remove('active')" style="margin-top: 5px;">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 4. User 面具 App ================= -->
+        <div class="app-screen" id="persona-screen">
+            <div class="app-header">
+                <h2>User 面具设定</h2>
+                <div class="back-btn" onclick="closeApp('persona-screen')">
+                    <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                </div>
+            </div>
+            <div class="api-form">
+                <div class="avatar-upload-row">
+                    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>" class="avatar-preview" id="persona-avatar-preview">
+                    <label class="btn btn-outline" style="padding: 8px 12px; font-size: 12px; margin:0;" for="persona-avatar-upload">上传我的头像</label>
+                    <input type="file" id="persona-avatar-upload" class="file-input" accept="image/*" onchange="previewPersonaAvatar(event)">
+                </div>
+
+                <div class="form-group">
+                    <label>我的名字 / 称呼</label>
+                    <input type="text" id="persona-name" placeholder="例如：林老板">
+                </div>
+                <div class="form-group">
+                    <label>我的背景设定</label>
+                    <textarea id="persona-prompt" placeholder="例如：我是你的上司，性格严厉但暗地里很关心你。"></textarea>
+                </div>
+                <button class="btn" onclick="savePersona()" style="margin-top: 10px;">保存面具</button>
+            </div>
+        </div>
+
+        <!-- ================= 5. 聊天 App ================= -->
+        <div class="app-screen" id="chat-screen">
+            <div class="app-header">
+                <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="toggleContactSelector()">
+                    <img id="current-chat-avatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>" class="header-avatar">
+                    <h2 id="current-chat-name">选择联系人...</h2>
+                </div>
+                <div class="back-btn" onclick="closeApp('chat-screen')">
+                    <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                </div>
+            </div>
+
+            <!-- 顶部联系人选择器 -->
+            <div class="contact-selector" id="contact-selector"></div>
+            
+            <div class="chat-container" id="chat-container">
+                <div class="msg ai">
+                    <div class="bubble" style="color:#999;">请点击顶部切换联系人或去联系人 App 创建角色开始对话。</div>
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <div class="image-preview-container" id="image-preview-container">
+                    <img id="image-preview-img" src="" alt="preview">
+                    <div class="remove-img" onclick="clearImage()">×</div>
+                </div>
+                
+                <div class="chat-input-row">
+                    <button class="action-btn img-btn" onclick="document.getElementById('chat-img-upload').click()">
+                        <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                    </button>
+                    <input type="file" id="chat-img-upload" class="file-input" accept="image/*" onchange="handleImageUpload(event)">
+                    
+                    <input type="text" id="chat-input" placeholder="输入消息..." onkeydown="if(event.key==='Enter') sendUserMessage()">
+                    
+                    <button class="action-btn send-btn" onclick="sendUserMessage()">
+                        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                    </button>
+
+                    <button class="action-btn wake-btn" onclick="triggerAIReply()" title="唤醒 AI">
+                        <svg viewBox="0 0 24 24"><path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z"/><path d="M19 16L19.75 19.25L23 20L19.75 20.75L19 24L18.25 20.75L15 20L18.25 19.25L19 16Z" transform="scale(0.6) translate(10, 10)"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 美化面板 -->
+        <div class="custom-panel" id="custom-panel" style="position: fixed; top: 0; right: -100%; width: 100%; max-width: 380px; height: 100%; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); z-index: 999; box-shadow: -5px 0 30px rgba(0,0,0,0.1); transition: right 0.3s; padding: 25px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="font-size: 18px; font-weight: 600; color: #333;">美化设置</h2>
+                <div style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #eee; border-radius: 50%; font-weight: bold; color: #666;" onclick="document.getElementById('custom-panel').classList.remove('active')">×</div>
+            </div>
+            <div style="background: #f8f8f8; padding: 15px; border-radius: 12px; border: 1px solid #eee;">
+                <h3 style="font-size: 13px; color: #666; margin-bottom: 10px; font-weight: 500;">界面设置</h3>
+                <p style="font-size:11px; color:#999;">当前版本专注核心 RP 功能。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================= 全局变量与数据预加载 =================
+        let lorebooks = [];
+        let contacts = [];
+        let userPersona = { name: '', avatar: '', prompt: '' };
+        
+        function loadAllData() {
+            // 读取世界书
+            lorebooks = JSON.parse(localStorage.getItem('rp_lorebooks')) || [];
+            // 读取联系人
+            contacts = JSON.parse(localStorage.getItem('rp_contacts')) || [];
+            // 读取 User 面具
+            const savedPersona = localStorage.getItem('rp_persona');
+            if(savedPersona) userPersona = JSON.parse(savedPersona);
+            
+            // 渲染数据
+            renderLorebookList();
+            renderContactList();
+            renderContactSelector();
+            loadPersonaUI();
+        }
+
+        // 初始化
+        window.onload = function() {
+            // 读取 API 配置
+            document.getElementById('api-url').value = localStorage.getItem('api_url') || '';
+            document.getElementById('api-key').value = localStorage.getItem('api_key') || '';
+            document.getElementById('model-input').value = localStorage.getItem('api_model') || '';
+            document.getElementById('global-prompt').value = localStorage.getItem('global_prompt') || '';
+            
+            loadAllData();
+            updateClock();
+            setInterval(updateClock, 1000);
+        };
+
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            document.getElementById('time-display').innerText = `${hours}:${minutes}`;
+            document.getElementById('date-display').innerText = `${now.getDate()} ${days[now.getDay()]} ·˖✶`;
+        }
+
+        function openApp(appId) {
+            document.getElementById(appId).classList.add('active');
+            if(appId === 'lorebook-screen') renderLorebookList();
+            if(appId === 'contacts-screen') renderContactList();
+            if(appId === 'persona-screen') loadPersonaUI();
+        }
+        function closeApp(appId) {
+            document.getElementById(appId).classList.remove('active');
+        }
+
+        // ================= API & 全局提示词 =================
+        async function fetchModels() {
+            const url = document.getElementById('api-url').value.trim();
+            const key = document.getElementById('api-key').value.trim();
+            if (!url || !key) { alert('请先填写 Base URL 和 API Key'); return; }
+            const select = document.getElementById('model-select');
+            select.innerHTML = '<option value="">加载中...</option>';
+            select.style.display = 'block';
+            try {
+                const response = await fetch(`${url}/models`, { headers: { 'Authorization': `Bearer ${key}` } });
+                const data = await response.json();
+                select.innerHTML = '<option value="">-- 选择模型 --</option>';
+                if (data.data && Array.isArray(data.data)) {
+                    const models = data.data.map(m => m.id).sort();
+                    models.forEach(modelId => {
+                        const option = document.createElement('option');
+                        option.value = modelId;
+                        option.textContent = modelId;
+                        select.appendChild(option);
+                    });
+                    select.onchange = function() { if(this.value) document.getElementById('model-input').value = this.value; }
+                } else { alert('未获取到模型'); }
+            } catch (error) { alert('获取失败，可手动输入模型名。'); select.style.display = 'none'; }
+        }
+
+        function saveApiConfig() {
+            localStorage.setItem('api_url', document.getElementById('api-url').value.trim());
+            localStorage.setItem('api_key', document.getElementById('api-key').value.trim());
+            localStorage.setItem('api_model', document.getElementById('model-input').value.trim());
+            localStorage.setItem('global_prompt', document.getElementById('global-prompt').value.trim());
+            alert('配置已保存！');
+            closeApp('api-screen');
+        }
+
+        // ================= 世界书 App =================
+        function renderLorebookList() {
+            const list = document.getElementById('lorebook-list');
+            list.innerHTML = '';
+            if(lorebooks.length === 0) {
+                list.innerHTML = '<div style="text-align:center; color:#999; font-size:13px; margin-top:20px;">暂无世界书，请点击上方按钮导入</div>';
+                return;
+            }
+            lorebooks.forEach(lb => {
+                const card = document.createElement('div');
+                card.className = 'lorebook-card';
+                card.innerHTML = `
+                    <div class="lorebook-info">
+                        <h4>${lb.name}</h4>
+                        <p>字数: ${lb.content.length}</p>
+                    </div>
+                    <div class="delete-lore-btn" onclick="deleteLorebook('${lb.id}')">
+                        <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function deleteLorebook(id) {
+            if(!confirm('确定删除该世界书吗？绑定了此书的角色将失效。')) return;
+            lorebooks = lorebooks.filter(x => x.id !== id);
+            localStorage.setItem('rp_lorebooks', JSON.stringify(lorebooks));
+            renderLorebookList();
+            updateLorebookDropdown();
+        }
+
+        function importLorebook(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            const fileName = file.name.replace(/\.[^/.]+$/, "");
+
+            if (file.name.endsWith('.txt')) {
+                reader.onload = function(e) { saveLorebook(fileName, e.target.result); };
+                reader.readAsText(file);
+            } else if (file.name.endsWith('.docx')) {
+                reader.onload = function(e) {
+                    const arrayBuffer = e.target.result;
+                    if(typeof mammoth === 'undefined') { alert('解析库未加载完成，请检查网络后刷新重试。'); return; }
+                    mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                        .then(function(result) { saveLorebook(fileName, result.value); })
+                        .catch(function(err) { alert('解析 Docx 失败: ' + err.message); });
+                };
+                reader.readAsArrayBuffer(file);
+            } else { alert('不支持的文件格式'); }
+        }
+
+        function saveLorebook(name, content) {
+            if(!content || content.trim() === '') { alert('文件内容为空'); return; }
+            lorebooks.push({ id: 'lb_' + Date.now(), name: name, content: content });
+            localStorage.setItem('rp_lorebooks', JSON.stringify(lorebooks));
+            renderLorebookList();
+            updateLorebookDropdown(); // 重点：导入后立刻刷新联系人下拉框
+            alert('导入成功！');
+            document.getElementById('lorebook-upload').value = '';
+        }
+
+        function updateLorebookDropdown() {
+            const select = document.getElementById('contact-lorebook');
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">不绑定</option>';
+            lorebooks.forEach(lb => {
+                const option = document.createElement('option');
+                option.value = lb.id;
+                option.textContent = lb.name;
+                select.appendChild(option);
+            });
+            if(currentVal) select.value = currentVal;
+        }
+
+        // ================= User 面具 App =================
+        let tempPersonaAvatar = null;
+
+        function loadPersonaUI() {
+            document.getElementById('persona-name').value = userPersona.name || '';
+            document.getElementById('persona-prompt').value = userPersona.prompt || '';
+            if (userPersona.avatar) {
+                document.getElementById('persona-avatar-preview').src = userPersona.avatar;
+                tempPersonaAvatar = userPersona.avatar;
+            } else {
+                document.getElementById('persona-avatar-preview').src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>";
+                tempPersonaAvatar = null;
+            }
+        }
+
+        function previewPersonaAvatar(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    tempPersonaAvatar = e.target.result;
+                    document.getElementById('persona-avatar-preview').src = tempPersonaAvatar;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function savePersona() {
+            const name = document.getElementById('persona-name').value.trim();
+            const prompt = document.getElementById('persona-prompt').value.trim();
+            
+            userPersona = { name, prompt, avatar: tempPersonaAvatar };
+            localStorage.setItem('rp_persona', JSON.stringify(userPersona));
+            alert('面具已保存！');
+            closeApp('persona-screen');
+        }
+
+        // ================= 联系人 App =================
+        let editingContactId = null;
+        let tempAvatarBase64 = null;
+
+        function renderContactList() {
+            const list = document.getElementById('contact-list');
+            list.innerHTML = '';
+            if(contacts.length === 0) {
+                list.innerHTML = '<div style="text-align:center; color:#999; font-size:13px; margin-top:20px;">点击右下角 + 号创建角色</div>';
+                return;
+            }
+            contacts.forEach(c => {
+                const card = document.createElement('div');
+                card.className = 'contact-card';
+                card.onclick = () => openContactModal(c.id);
+                
+                let lbName = '';
+                if(c.lorebookId) {
+                    const lb = lorebooks.find(x => x.id === c.lorebookId);
+                    if(lb) lbName = ` [已绑定: ${lb.name}]`;
+                }
+
+                card.innerHTML = `
+                    <img src="${c.avatar}" class="contact-avatar">
+                    <div class="contact-info">
+                        <h4>${c.name}</h4>
+                        <p>${c.prompt}${lbName}</p>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function renderContactSelector() {
+            const selector = document.getElementById('contact-selector');
+            selector.innerHTML = '';
+            if(contacts.length === 0) {
+                selector.innerHTML = '<div style="padding:15px; text-align:center; font-size:13px; color:#999;">暂无联系人</div>';
+                return;
+            }
+            contacts.forEach(c => {
+                const item = document.createElement('div');
+                item.className = 'selector-item';
+                item.onclick = () => { switchChatContact(c.id); selector.classList.remove('active'); };
+                item.innerHTML = `<img src="${c.avatar}"><span>${c.name}</span>`;
+                selector.appendChild(item);
+            });
+        }
+
+        function openContactModal(id = null) {
+            editingContactId = id;
+            tempAvatarBase64 = null;
+            const modal = document.getElementById('contact-modal');
+            modal.classList.add('active');
+            updateLorebookDropdown(); // 确保每次打开都是最新的
+
+            if (id) {
+                const c = contacts.find(x => x.id === id);
+                document.getElementById('modal-title').innerText = '编辑角色';
+                document.getElementById('contact-id').value = c.id;
+                document.getElementById('contact-name').value = c.name;
+                document.getElementById('contact-prompt').value = c.prompt;
+                document.getElementById('contact-greeting').value = c.greeting || '';
+                document.getElementById('contact-lorebook').value = c.lorebookId || '';
+                document.getElementById('contact-avatar-preview').src = c.avatar;
+                tempAvatarBase64 = c.avatar;
+                document.getElementById('delete-contact-btn').style.display = 'block';
+            } else {
+                document.getElementById('modal-title').innerText = '创建角色';
+                document.getElementById('contact-id').value = '';
+                document.getElementById('contact-name').value = '';
+                document.getElementById('contact-prompt').value = '';
+                document.getElementById('contact-greeting').value = '';
+                document.getElementById('contact-lorebook').value = '';
+                document.getElementById('contact-avatar-preview').src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>";
+                tempAvatarBase64 = null;
+                document.getElementById('delete-contact-btn').style.display = 'none';
+            }
+        }
+
+        function previewContactAvatar(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    tempAvatarBase64 = e.target.result;
+                    document.getElementById('contact-avatar-preview').src = tempAvatarBase64;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function saveContact() {
+            const name = document.getElementById('contact-name').value.trim();
+            const prompt = document.getElementById('contact-prompt').value.trim();
+            const greeting = document.getElementById('contact-greeting').value.trim();
+            const lorebookId = document.getElementById('contact-lorebook').value;
+            
+            if (!name || !prompt) { alert('名字和人设不能为空'); return; }
+
+            const id = document.getElementById('contact-id').value;
+
+            if (id) {
+                const index = contacts.findIndex(x => x.id === id);
+                contacts[index] = { ...contacts[index], name, prompt, greeting, lorebookId, avatar: tempAvatarBase64 || contacts[index].avatar };
+            } else {
+                contacts.push({
+                    id: 'c_' + Date.now(),
+                    name, prompt, greeting, lorebookId,
+                    avatar: tempAvatarBase64 || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>"
+                });
+            }
+
+            localStorage.setItem('rp_contacts', JSON.stringify(contacts));
+            document.getElementById('contact-modal').classList.remove('active');
+            renderContactList();
+            renderContactSelector();
+        }
+
+        function deleteContact() {
+            if (!confirm('确定删除该角色及其所有聊天记录吗？')) return;
+            const id = document.getElementById('contact-id').value;
+            contacts = contacts.filter(x => x.id !== id);
+            localStorage.setItem('rp_contacts', JSON.stringify(contacts));
+            localStorage.removeItem(`rp_chat_${id}`);
+            
+            document.getElementById('contact-modal').classList.remove('active');
+            renderContactList();
+            renderContactSelector();
+            
+            if(currentContactId === id) {
+                currentContactId = null;
+                document.getElementById('current-chat-name').innerText = '选择联系人...';
+                document.getElementById('chat-container').innerHTML = '';
+            }
+        }
+
+        // ================= 聊天 App =================
+        let currentContactId = null;
+        let currentImageBase64 = null;
+        let isGenerating = false;
+
+        function openChatApp() {
+            openApp('chat-screen');
+            if (!currentContactId && contacts.length > 0) {
+                switchChatContact(contacts[0].id);
+            }
+        }
+
+        function toggleContactSelector() {
+            document.getElementById('contact-selector').classList.toggle('active');
+        }
+
+        function switchChatContact(id) {
+            currentContactId = id;
+            const c = contacts.find(x => x.id === id);
+            if(!c) return;
+
+            document.getElementById('current-chat-avatar').src = c.avatar;
+            document.getElementById('current-chat-name').innerText = c.name;
+
+            renderChatHistory();
+            document.getElementById('contact-selector').classList.remove('active');
+        }
+
+        function renderChatHistory() {
+            const container = document.getElementById('chat-container');
+            container.innerHTML = '';
+            
+            const history = JSON.parse(localStorage.getItem(`rp_chat_${currentContactId}`)) || [];
+            
+            if (history.length === 0) {
+                const c = contacts.find(x => x.id === currentContactId);
+                if (c && c.greeting) {
+                    appendMessageToDOM('ai', c.greeting, null);
+                }
+            } else {
+                history.forEach(msg => {
+                    appendMessageToDOM(msg.role, msg.text, msg.image);
+                });
+            }
+            scrollToBottom();
+        }
+
+        function appendMessageToDOM(role, text, imageBase64) {
+            const container = document.getElementById('chat-container');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `msg ${role}`;
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            
+            if (imageBase64) {
+                const img = document.createElement('img');
+                img.src = imageBase64;
+                img.className = 'chat-img';
+                bubble.appendChild(img);
+            }
+            if (text) {
+                const textNode = document.createTextNode(text);
+                if (imageBase64) bubble.appendChild(document.createElement('br'));
+                bubble.appendChild(textNode);
+            }
+            msgDiv.appendChild(bubble);
+            container.appendChild(msgDiv);
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentImageBase64 = e.target.result;
+                    document.getElementById('image-preview-img').src = currentImageBase64;
+                    document.getElementById('image-preview-container').classList.add('active');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function clearImage() {
+            currentImageBase64 = null;
+            document.getElementById('chat-img-upload').value = '';
+            document.getElementById('image-preview-container').classList.remove('active');
+        }
+
+        function sendUserMessage() {
+            if (!currentContactId) { alert('请先选择联系人'); return; }
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text && !currentImageBase64) return;
+
+            appendMessageToDOM('user', text, currentImageBase64);
+            saveChatToLocal('user', text, currentImageBase64);
+            
+            clearImage();
+            input.value = '';
+            scrollToBottom();
+        }
+
+        async function triggerAIReply() {
+            if (isGenerating || !currentContactId) return;
+
+            const url = localStorage.getItem('api_url');
+            const key = localStorage.getItem('api_key');
+            const model = localStorage.getItem('api_model');
+            const globalPrompt = localStorage.getItem('global_prompt') || '';
+            
+            if (!url || !key || !model) { alert('请先前往 "API 设置" 配置模型'); return; }
+
+            const c = contacts.find(x => x.id === currentContactId);
+            const history = JSON.parse(localStorage.getItem(`rp_chat_${currentContactId}`)) || [];
+            
+            if(history.length === 0 || history[history.length - 1].role === 'ai') return; 
+
+            // 核心：组装 System Prompt
+            let systemPrompt = `你正在扮演角色：${c.name}。\n设定如下：${c.prompt}\n`;
+            
+            // 注入世界书
+            if (c.lorebookId) {
+                const lb = lorebooks.find(x => x.id === c.lorebookId);
+                if (lb) {
+                    const maxLoreLength = 4000;
+                    const loreText = lb.content.length > maxLoreLength ? lb.content.substring(0, maxLoreLength) + '...' : lb.content;
+                    systemPrompt += `\n[世界设定背景]:\n${loreText}\n`;
+                }
+            }
+
+            // 注入 User 面具
+            if (userPersona.name || userPersona.prompt) {
+                systemPrompt += `\n[对方身份设定]: 正在和你对话的人叫 ${userPersona.name || '未命名'}。`;
+                if (userPersona.prompt) systemPrompt += `Ta的背景是：${userPersona.prompt}`;
+                systemPrompt += '\n';
+            }
+
+            // 注入全局提示词
+            if (globalPrompt) {
+                systemPrompt += `\n[全局对话指令]: ${globalPrompt}\n`;
+            }
+
+            // 强制分条指令
+            systemPrompt += `\n[重要强制指令]: 请完全模拟真人的手机聊天方式。将你的回复拆分成多条简短的短句，每条短句之间必须用 "|||" 分隔（注意是三个竖线）。每条短句字数尽量少于30字，最多不要超过4条。不要输出其他多余的内容。`;
+
+            // AI 占位
+            const aiMsgDiv = document.createElement('div');
+            aiMsgDiv.className = 'msg ai';
+            const aiBubble = document.createElement('div');
+            aiBubble.className = 'bubble';
+            aiBubble.innerText = '...';
+            aiMsgDiv.appendChild(aiBubble);
+            document.getElementById('chat-container').appendChild(aiMsgDiv);
+            scrollToBottom();
+
+            isGenerating = true;
+
+            try {
+                const apiMessages = [{ role: "system", content: systemPrompt }];
+                
+                const recentHistory = history.slice(-20);
+                recentHistory.forEach(msg => {
+                    if(msg.role === 'user') {
+                        let content = [];
+                        if(msg.text) content.push({ type: "text", text: msg.text });
+                        if(msg.image) content.push({ type: "image_url", image_url: { url: msg.image } });
+                        apiMessages.push({ role: "user", content: content.length === 1 && content[0].type === 'text' ? msg.text : content });
+                    } else {
+                        apiMessages.push({ role: "assistant", content: msg.text });
+                    }
+                });
+
+                const response = await fetch(`${url}/chat/completions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                    body: JSON.stringify({ model: model, messages: apiMessages, stream: true })
+                });
+
+                if (!response.ok) throw new Error(`API 错误: ${response.status}`);
+
+                aiBubble.innerText = '';
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                
+                let fullText = ''; // 完整保存的全部文本
+                let currentAiBubble = aiBubble; // 当前正在输出的气泡
+                let bubbleText = ''; // 当前气泡积累的文本
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                const delta = data.choices[0]?.delta?.content || '';
+                                if (delta) {
+                                    fullText += delta;
+                                    bubbleText += delta;
+                                    
+                                    // 处理分条逻辑
+                                    if (bubbleText.includes('|||')) {
+                                        const parts = bubbleText.split('|||');
+                                        // 把分隔符之前的部分放在当前气泡显示
+                                        currentAiBubble.innerText = parts[0];
+                                        
+                                        // 剩下的部分留在新气泡
+                                        bubbleText = parts.slice(1).join('|||');
+                                        
+                                        // 如果还有剩下的，创建新气泡
+                                        if (bubbleText) {
+                                            const newMsgDiv = document.createElement('div');
+                                            newMsgDiv.className = 'msg ai';
+                                            const newBubble = document.createElement('div');
+                                            newBubble.className = 'bubble';
+                                            newMsgDiv.appendChild(newBubble);
+                                            document.getElementById('chat-container').appendChild(newMsgDiv);
+                                            currentAiBubble = newBubble;
+                                        }
+                                    } else {
+                                        // 没凑齐分隔符时，要防止把 || 打出来
+                                        if (bubbleText.endsWith('|')) {
+                                            // 暂时不显示最后一个 |
+                                            currentAiBubble.innerText = bubbleText.slice(0, -1);
+                                        } else if (bubbleText.endsWith('||')) {
+                                            // 暂时不显示最后两个 ||
+                                            currentAiBubble.innerText = bubbleText.slice(0, -2);
+                                        } else {
+                                            currentAiBubble.innerText = bubbleText;
+                                        }
+                                    }
+                                    scrollToBottom();
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+                
+                // 收尾处理：如果有残留的未显示文本（极少数情况）
+                if (bubbleText.trim() !== '') {
+                    currentAiBubble.innerText = bubbleText;
+                }
+                // 去掉可能残留的空气泡
+                if (currentAiBubble.innerText === '') {
+                    currentAiBubble.parentElement.remove();
+                }
+
+                // 保存记录时，将 ||| 替换成换行符，方便查看历史记录
+                saveChatToLocal('ai', fullText.replace(/\|\|\|/g, '\n'), null);
+
+            } catch (error) {
+                aiBubble.innerText = `出错: ${error.message}`;
+                aiBubble.style.color = '#ff4d4f';
+            } finally {
+                isGenerating = false;
+            }
+        }
+
+        function saveChatToLocal(role, text, image) {
+            if(!currentContactId) return;
+            const history = JSON.parse(localStorage.getItem(`rp_chat_${currentContactId}`)) || [];
+            history.push({ role, text, image });
+            if(history.length > 50) history.shift();
+            localStorage.setItem(`rp_chat_${currentContactId}`, JSON.stringify(history));
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('chat-container');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        document.addEventListener('click', function(e) {
+            const selector = document.getElementById('contact-selector');
+            const header = document.querySelector('#chat-screen .app-header');
+            if (selector && selector.classList.contains('active') && !header.contains(e.target) && !selector.contains(e.target)) {
+                selector.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
